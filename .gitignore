@@ -18,3 +18,6 @@ Thumbs.db
 # 其他
 .env
 *.local
+
+# 本地克隆的上游源码仓库（独立 git 仓库，不纳入文档仓库版本管理）
+openclaw/
