@@ -93,7 +93,14 @@ openclaw channels status --probe
 - 执行方式：
 
 ```bash
-bash /Users/xiaomo/Desktop/OpenClaw-部署文档/sync-upstream.sh
+# 默认：同步 openclaw/main + 安装依赖 + build/check + push
+bash ./sync-upstream.sh
+
+# 指定仓库路径/分支
+bash ./sync-upstream.sh --repo ./openclaw --branch main
+
+# 仅同步代码（跳过安装与校验）
+bash ./sync-upstream.sh --skip-install --skip-verify
 ```
 
 ## 7) 文档索引（本目录）
@@ -103,6 +110,7 @@ bash /Users/xiaomo/Desktop/OpenClaw-部署文档/sync-upstream.sh
 - API 配置：`OpenClaw-API配置指南.md`
 - 故障排查：`OpenClaw-故障排查指南.md`
 - 安全建议：`OpenClaw-安全最佳实践.md`
+- 完整修复方案：`OpenClaw-完整修复方案-2026-02-09.md`
 
 ## 8) 注意事项
 
