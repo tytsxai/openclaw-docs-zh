@@ -1,7 +1,7 @@
 # OpenClaw API 配置指南
 
 > 配置日期：2026-02-09  
-> 适用版本：OpenClaw 2026.2.3+
+> 适用版本：OpenClaw 2026.2.6+
 
 ---
 
@@ -44,20 +44,98 @@ OpenClaw 支持多种 AI 模型提供商，通过统一的配置格式进行集�
       }
     }
   },
+  "commands": {
+    "native": true,
+    "nativeSkills": false,
+    "text": true,
+    "include": [
+      "help",
+      "commands",
+      "status",
+      "whoami",
+      "context",
+      "new",
+      "reset",
+      "stop",
+      "think",
+      "model",
+      "verbose"
+    ],
+    "bash": false,
+    "config": false,
+    "debug": false,
+    "restart": false,
+    "useAccessGroups": true
+  },
   "channels": {
     "telegram": {
       "enabled": true,
       "botToken": "<BOT_TOKEN>",
-      "allowFrom": ["5585975222"],
+      "allowFrom": ["<YOUR_TELEGRAM_USER_ID>"],
       "dmPolicy": "allowlist",
       "groupPolicy": "allowlist",
-      "streamMode": "off"
+      "streamMode": "off",
+      "customCommands": []
+    }
+  },
+  "plugins": {
+    "entries": {
+      "device-pair": { "enabled": false },
+      "phone-control": { "enabled": false },
+      "talk-voice": { "enabled": false }
     }
   }
 }
 ```
 
 > 说明：这里使用 `openai` 作为 provider 名称，`baseUrl` 指向 NVIDIA OpenAI 兼容接口，是当前 OpenClaw 最直接稳定的配置方式。
+
+---
+
+## Kimi K2.5 运行特性（2026-02-09 复检）
+
+实测结论：`moonshotai/kimi-k2.5` 可以正常工作，但响应时延波动较大。
+
+- 在 `openclaw agent --timeout 120` 下，连续出现 `aborted=true`
+- 在 `--timeout 180` 或 `--timeout 240` 下，可稳定拿到回复
+
+建议：
+
+1. 生产运行将 Agent 超时设置为 **>=180 秒**（建议 240 秒）
+2. 若需要低时延稳定性，可临时切换 `moonshotai/kimi-k2-instruct` 作为回退模型
+
+推荐健康检查命令：
+
+```bash
+openclaw gateway status
+openclaw channels status --probe
+openclaw agent --agent main --session-id smoke-$(date +%s) --message "请仅回复：UPGRADE_OK" --thinking low --timeout 180 --json
+```
+
+---
+
+## Telegram 命令面最小化（推荐）
+
+如果你只希望机器人保留核心命令，重点是：
+
+1. 用 `commands.include` 做统一白名单
+2. 关闭 `commands.nativeSkills`
+3. 关闭不需要的插件入口（例如 `device-pair` / `phone-control` / `talk-voice`）
+
+应用配置后，执行：
+
+```bash
+pkill -9 -f openclaw-gateway || true
+nohup openclaw gateway run --bind loopback --port 18789 --force > /tmp/openclaw-gateway.log 2>&1 &
+openclaw channels status --probe
+curl -s "https://api.telegram.org/bot<TOKEN>/getMyCommands"
+```
+
+若菜单中仍有多余命令，优先检查：
+
+- `commands.include` 是否被正确加载
+- `plugins.entries.<pluginId>.enabled` 是否真的为 `false`
+- 是否连接到了错误实例（确认当前 bot token 与运行进程一致）
 
 ---
 
@@ -519,7 +597,7 @@ openclaw agent --message "Hello" --model kimi
 openclaw doctor
 
 # 测试模型连接
-openclaw agent --agent main --session-id healthcheck-api --message "test" --thinking low
+openclaw agent --agent main --session-id smoke-$(date +%s) --message "请仅回复：UPGRADE_OK" --thinking low --timeout 180 --json
 
 # 查看当前配置
 openclaw config get agents.defaults.model.primary
@@ -572,4 +650,62 @@ openclaw gateway restart
 ---
 
 *文档版本：v1.0*  
-*最后更新：2026-02-06*
+*最后更新：2026-02-09*
+
+---
+
+## 2026-02-09 实测补充（NVIDIA + Telegram）
+
+本节是基于本机实际健康检查新增（参考原生项目 CLI 流程）。
+
+### 目标配置
+
+- Base URL: `https://integrate.api.nvidia.com/v1`
+- API 协议: `openai-completions`
+- 默认模型: `openai/moonshotai/kimi-k2.5`
+- Telegram Bot: `@openclawclaw888bot`
+- Telegram allowlist: `5585975222`
+
+### 实测结果
+
+1. `GET /v1/models` 成功，API Key 可用。  
+2. `moonshotai/kimi-k2.5` 在 `POST /v1/chat/completions` 上多次超时（20s/45s/130s）。  
+3. 同 API Key 下 `meta/llama-3.1-8b-instruct`、`moonshotai/kimi-k2-instruct` 可稳定返回。  
+4. OpenClaw Telegram 通道可用，`openclaw message send` 发送测试成功。
+
+### 建议配置（保留主模型 + 增加回退）
+
+保持：
+
+```json
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openai/moonshotai/kimi-k2.5",
+        "fallbacks": [
+          "openai/moonshotai/kimi-k2-instruct"
+        ]
+      }
+    }
+  }
+}
+```
+
+命令方式：
+
+```bash
+openclaw models fallbacks add openai/moonshotai/kimi-k2-instruct
+openclaw gateway restart
+```
+
+### 推荐巡检命令
+
+```bash
+openclaw gateway status
+openclaw channels status --probe
+openclaw health
+openclaw models status
+openclaw doctor --non-interactive
+```
+

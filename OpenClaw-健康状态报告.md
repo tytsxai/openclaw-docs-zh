@@ -1,198 +1,92 @@
-# OpenClaw 部署健康状态报告（复检）
+# OpenClaw 部署健康状态报告（最新）
 
-> 复检日期：2026-02-09  
-> 本地版本：OpenClaw 2026.2.3（commit `eab0a07f7173`）  
-> 环境：macOS 26.1 / Node.js v25.5.0 / pnpm 10.23.0
+> 复检时间：2026-02-09 02:59（CST）  
+> 本机版本：OpenClaw `2026.2.6-3`（`b23d886`）  
+> 参考上游：`https://github.com/openclaw/openclaw`  
+> 维护仓库：`/Users/xiaomo/openclaw`
 
 ---
 
 ## 总体结论
 
-**状态：✅ 可用（生产可运行）**
+**状态：✅ 可运行 / ⚠️ 模型时延波动较大**
 
-| 维度 | 结果 | 备注 |
-|------|------|------|
-| Gateway 服务 | ✅ 正常 | LaunchAgent 运行中（PID 44245） |
-| Telegram 频道 | ✅ 正常 | 轮询模式运行，`@openclawclaw888bot` 探活成功 |
-| 模型调用（OpenClaw 内部） | ✅ 正常 | `moonshotai/kimi-k2.5` 返回 `MODEL_AGENT_OK` |
-| Telegram 发信测试 | ✅ 正常 | 发送到 `5585975222` 成功（messageId `90` / `91`） |
-| 配置有效性 | ✅ 已修复 | 移除无效 `commands.include`，修正流式配置 |
-| 上游一致性 | ⚠️ 需关注 | 本地分支落后 `origin/main` 253 commits |
-
----
-
-## 本次复检范围
-
-1. 对照官方仓库 `https://github.com/openclaw/openclaw` 检查本地代码同步状态
-2. 核对 `~/.openclaw/openclaw.json` 的模型与 Telegram 配置
-3. 执行 `gateway/status/channels/doctor` 健康检查
-4. 执行模型推理与 Telegram 实发测试
-5. 记录修复项与后续建议
+| 检查项 | 结果 | 备注 |
+|---|---|---|
+| Gateway 状态 | ✅ 正常 | `openclaw gateway status` 显示 `running`、`RPC probe: ok` |
+| Telegram 探活 | ✅ 正常 | `openclaw channels status --probe --json` 返回 `probe.ok=true` |
+| Telegram 发消息 | ✅ 成功 | `messageId=100`, `chatId=5585975222` |
+| 全局 CLI 链接 | ✅ 已修正 | `/opt/homebrew/lib/node_modules/openclaw -> /Users/xiaomo/openclaw` |
+| `session-id` 路由 | ✅ 正常 | 显式 `--session-id` 已按请求会话执行 |
+| Kimi K2.5 调用 | ⚠️ 波动 | `timeout=120s` 易超时；`180s~240s` 可稳定拿到结果 |
 
 ---
 
-## 关键配置核对（脱敏）
+## 核心验证记录
 
-当前生效配置位于 `~/.openclaw/openclaw.json`：
+### 1) Gateway / Telegram
 
-```json
-{
-  "models": {
-    "providers": {
-      "openai": {
-        "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "api": "openai-completions",
-        "models": [{
-          "id": "moonshotai/kimi-k2.5"
-        }]
-      }
-    }
-  },
-  "agents": {
-    "defaults": {
-      "model": {
-        "primary": "openai/moonshotai/kimi-k2.5"
-      }
-    }
-  },
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "dmPolicy": "allowlist",
-      "allowFrom": ["5585975222"],
-      "groupPolicy": "allowlist",
-      "streamMode": "off"
-    }
-  }
-}
-```
-
-### 本次修复项
-
-- ✅ 删除无效配置项：`commands.include`（会导致 `config reload skipped (invalid config)`）
-- ✅ 将 `channels.telegram.streamMode` 从 `partial` 调整为 `off`（避免外部频道分片输出）
-
----
-
-## 健康检查明细
-
-### 1) Gateway 服务状态
+执行：
 
 ```bash
 openclaw gateway status
-```
-
-核心结果：
-
-- `Runtime: running (pid 44245, state active)`
-- `RPC probe: ok`
-- `Listening: 127.0.0.1:18789`
-- `Config (cli/service): ~/.openclaw/openclaw.json`
-
-### 2) Telegram 频道探活
-
-```bash
 openclaw channels status --probe --json
 ```
 
-核心结果：
+结果：网关运行正常，Telegram 机器人 `@openclawclaw888bot` 轮询与探活正常。
 
-- `configured: true`
-- `running: true`
-- `mode: polling`
-- `probe.ok: true`
-- `probe.bot.username: openclawclaw888bot`
+### 2) Telegram 发送测试
 
-### 3) 综合状态
+执行：
 
 ```bash
-openclaw status --json
-```
-
-核心结果：
-
-- Gateway reachable：`true`
-- 默认模型：`moonshotai/kimi-k2.5`
-- 安全审计：`critical=0, warn=0, info=1`
-
-### 4) Doctor 诊断
-
-```bash
-openclaw doctor --non-interactive
-```
-
-当前仅剩 1 项非阻塞提示：
-
-- `Gateway service entrypoint does not match the current install`
-- 显示链路：`/opt/homebrew/lib/node_modules/openclaw/dist/index.js -> /Users/xiaomo/openclaw/dist/index.js`
-
-> 说明：该提示与全局 npm 链接（符号链接）相关，不影响当前运行。
-
----
-
-## 连通与功能测试结果
-
-### 1) NVIDIA API 可达性
-
-```bash
-curl -sS --max-time 30 https://integrate.api.nvidia.com/v1/models \
-  -H "Authorization: Bearer <NVIDIA_API_KEY>"
-```
-
-结果：`HTTP 200`，并能查到 `moonshotai/kimi-k2.5`。
-
-### 2) OpenClaw 模型调用实测
-
-```bash
-openclaw agent --agent main --session-id healthcheck-20260209-1 \
-  --message "请仅回复：MODEL_AGENT_OK" --thinking low --timeout 70 --json
-```
-
-结果（摘要）：
-
-- `status: ok`
-- `summary: completed`
-- 回复内容：`MODEL_AGENT_OK`
-- 模型：`moonshotai/kimi-k2.5`
-- 耗时：约 `20531ms`
-
-### 3) Telegram 出站消息测试
-
-```bash
-openclaw message send --channel telegram --target 5585975222 \
-  --message "OpenClaw 健康检查测试消息" --json
+openclaw message send --channel telegram --target 5585975222 --message "OpenClaw 健康检查..." --json
 ```
 
 结果：
 
-- `payload.ok: true`
-- `chatId: 5585975222`
-- `messageId: 90`（后续复测 `91`）
+- `payload.ok = true`
+- `payload.messageId = 100`
+- `payload.chatId = 5585975222`
+
+### 3) Agent 运行与超时阈值
+
+关键样例：
+
+- 成功：`verify-sessionid-1770574573`，`durationMs=49083`
+- 超时：`postfix-retry-*`（`--timeout 120`），`aborted=true`
+- 成功：`k25-final-t180-1770576789`，`durationMs=73227`
+- 成功：`final-k25-1770576511`，`durationMs=107183`（`--timeout 240`）
+
+结论：
+
+- 会话路由问题已修复。
+- 当前主要风险为 `moonshotai/kimi-k2.5` 响应时间波动，不是通道或网关故障。
 
 ---
 
-## 与原生仓库一致性检查
+## 当前生效配置（按你的参数）
 
-仓库：`/Users/xiaomo/openclaw`
-
-- 当前分支：`main`
-- 本地 commit：`eab0a07f7173`
-- 上游最新：`origin/main @ 7f7d49aef...`
-- Ahead/Behind：`0 / 253`
-- 本地未提交改动：`15` 个文件
-
-建议：如需完全贴近原生项目，请先备份本地改动再执行 rebase/merge。
+- Base URL：`https://integrate.api.nvidia.com/v1`
+- API：`openai-completions`
+- 模型：`moonshotai/kimi-k2.5`
+- Telegram Bot：`@openclawclaw888bot`
+- Telegram allowlist：`5585975222`
+- Telegram streamMode：`off`
 
 ---
 
-## 后续建议
+## 建议
 
-1. **版本同步**：在确认本地 15 个改动用途后，再同步到 `origin/main`。
-2. **定期复检**：每周执行一次 `openclaw doctor --non-interactive` 与 `openclaw channels status --probe`。
-3. **配置变更后重启**：每次改动 `~/.openclaw/openclaw.json` 后执行 `openclaw gateway restart`。
-4. **安全审计**：补充执行 `openclaw security audit --deep` 并归档结果。
+1. 继续使用 `kimi-k2.5` 时，建议命令级超时设置为 **>=180 秒**（建议 240 秒）。
+2. 每次升级后执行一次烟囱测试：
+
+```bash
+openclaw agent --agent main --session-id smoke-$(date +%s) --message '请仅回复：UPGRADE_OK' --thinking low --timeout 180 --json
+```
+
+3. 若短时延优先，可临时改用 `moonshotai/kimi-k2-instruct`。
 
 ---
 
-*报告生成时间：2026-02-09 01:50*  
-*检查工具：openclaw gateway/status/channels/doctor、openclaw agent、openclaw message、curl、git*
+*报告生成时间：2026-02-09 02:59（CST）*
