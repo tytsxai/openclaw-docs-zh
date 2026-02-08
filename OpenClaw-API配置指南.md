@@ -1,6 +1,6 @@
 # OpenClaw API 配置指南
 
-> 配置日期：2026-02-06  
+> 配置日期：2026-02-09  
 > 适用版本：OpenClaw 2026.2.3+
 
 ---
@@ -10,6 +10,54 @@
 OpenClaw 支持多种 AI 模型提供商，通过统一的配置格式进行集成。
 
 **配置文件位置**：`~/.openclaw/openclaw.json`
+
+---
+
+## 当前环境实配（2026-02-09）
+
+以下是当前本机复检通过的配置（脱敏版）：
+
+```json
+{
+  "models": {
+    "providers": {
+      "openai": {
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "nvapi-...",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "moonshotai/kimi-k2.5",
+            "name": "Kimi K2.5",
+            "reasoning": false,
+            "contextWindow": 200000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openai/moonshotai/kimi-k2.5"
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "<BOT_TOKEN>",
+      "allowFrom": ["5585975222"],
+      "dmPolicy": "allowlist",
+      "groupPolicy": "allowlist",
+      "streamMode": "off"
+    }
+  }
+}
+```
+
+> 说明：这里使用 `openai` 作为 provider 名称，`baseUrl` 指向 NVIDIA OpenAI 兼容接口，是当前 OpenClaw 最直接稳定的配置方式。
 
 ---
 
@@ -185,7 +233,7 @@ OpenClaw 支持多种 AI 模型提供商，通过统一的配置格式进行集�
   },
   "models": {
     "providers": {
-      "nvidia": {
+      "openai": {
         "baseUrl": "https://integrate.api.nvidia.com/v1",
         "apiKey": "nvapi-...",
         "api": "openai-completions",
@@ -193,9 +241,9 @@ OpenClaw 支持多种 AI 模型提供商，通过统一的配置格式进行集�
           {
             "id": "moonshotai/kimi-k2.5",
             "name": "Kimi K2.5",
-            "reasoning": true,
-            "contextWindow": 256000,
-            "maxTokens": 4096,
+            "reasoning": false,
+            "contextWindow": 200000,
+            "maxTokens": 8192,
             "cost": {
               "input": 2,
               "output": 8,
@@ -222,10 +270,10 @@ OpenClaw 支持多种 AI 模型提供商，通过统一的配置格式进行集�
   "agents": {
     "defaults": {
       "model": {
-        "primary": "nvidia/moonshotai/kimi-k2.5"
+        "primary": "openai/moonshotai/kimi-k2.5"
       },
       "models": {
-        "nvidia/moonshotai/kimi-k2.5": {
+        "openai/moonshotai/kimi-k2.5": {
           "alias": "kimi"
         }
       }
@@ -471,10 +519,10 @@ openclaw agent --message "Hello" --model kimi
 openclaw doctor
 
 # 测试模型连接
-openclaw agent --message "test" --thinking low
+openclaw agent --agent main --session-id healthcheck-api --message "test" --thinking low
 
 # 查看当前配置
-openclaw config get
+openclaw config get agents.defaults.model.primary
 
 # 查看可用模型
 openclaw models list
@@ -509,9 +557,6 @@ cat ~/.openclaw/openclaw.json | python -m json.tool
 ```bash
 # 重启 Gateway
 openclaw gateway restart
-
-# 或重新加载配置
-openclaw config reload
 ```
 
 ---

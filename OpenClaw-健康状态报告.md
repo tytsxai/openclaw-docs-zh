@@ -1,77 +1,49 @@
-# OpenClaw 部署健康状态报告
+# OpenClaw 部署健康状态报告（复检）
 
-> 检查日期：2026-02-06  
-> 部署版本：2026.2.3  
-> 环境：macOS / Node.js v25.5.0 / pnpm 10.23.0
-
----
-
-## 总体状态：✅ 健康运行
-
-| 检查项 | 状态 | 说明 |
-|--------|------|------|
-| Gateway 进程 | ✅ 运行中 | PID 88413, 运行 7+ 小时 |
-| WebSocket 监听 | ✅ 正常 | `ws://127.0.0.1:18789` |
-| AI 模型连接 | ✅ 正常 | NVIDIA API 响应 200 |
-| 配置文件 | ✅ 有效 | JSON 格式正确 |
-| 构建输出 | ✅ 存在 | `dist/` 目录完整 |
-| Node.js 版本 | ✅ 符合要求 | v25.5.0 (≥22.12.0) |
+> 复检日期：2026-02-09  
+> 本地版本：OpenClaw 2026.2.3（commit `eab0a07f7173`）  
+> 环境：macOS 26.1 / Node.js v25.5.0 / pnpm 10.23.0
 
 ---
 
-## 详细检查结果
+## 总体结论
 
-### 1. 进程状态
+**状态：✅ 可用（生产可运行）**
 
-```bash
-ps aux | grep openclaw
-```
-
-**输出：**
-```
-xiaomo  88413  0.0  0.2  444864992  31328  ??  S  2:03AM  0:22.17 openclaw-gateway
-```
-
-- **PID**: 88413
-- **启动时间**: 2026-02-05 02:03
-- **运行时长**: 7+ 小时
-- **内存占用**: ~31MB
+| 维度 | 结果 | 备注 |
+|------|------|------|
+| Gateway 服务 | ✅ 正常 | LaunchAgent 运行中（PID 44245） |
+| Telegram 频道 | ✅ 正常 | 轮询模式运行，`@openclawclaw888bot` 探活成功 |
+| 模型调用（OpenClaw 内部） | ✅ 正常 | `moonshotai/kimi-k2.5` 返回 `MODEL_AGENT_OK` |
+| Telegram 发信测试 | ✅ 正常 | 发送到 `5585975222` 成功（messageId `90` / `91`） |
+| 配置有效性 | ✅ 已修复 | 移除无效 `commands.include`，修正流式配置 |
+| 上游一致性 | ⚠️ 需关注 | 本地分支落后 `origin/main` 253 commits |
 
 ---
 
-### 2. 网络监听状态
+## 本次复检范围
 
-| 协议 | 地址 | 端口 | 状态 |
-|------|------|------|------|
-| WebSocket | 127.0.0.1 | 18789 | ✅ 监听 |
-| WebSocket | [::1] | 18789 | ✅ 监听 |
-| Canvas Host | 127.0.0.1 | 18789 | ✅ 已挂载 |
-
-**Canvas 访问地址**：
-```
-http://127.0.0.1:18789/__openclaw__/canvas/
-```
+1. 对照官方仓库 `https://github.com/openclaw/openclaw` 检查本地代码同步状态
+2. 核对 `~/.openclaw/openclaw.json` 的模型与 Telegram 配置
+3. 执行 `gateway/status/channels/doctor` 健康检查
+4. 执行模型推理与 Telegram 实发测试
+5. 记录修复项与后续建议
 
 ---
 
-### 3. AI 模型配置
+## 关键配置核对（脱敏）
 
-**当前配置**（`~/.openclaw/openclaw.json`）：
+当前生效配置位于 `~/.openclaw/openclaw.json`：
 
 ```json
 {
   "models": {
     "providers": {
-      "nvidia": {
+      "openai": {
         "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "apiKey": "nvapi-YOUR_API_KEY",
         "api": "openai-completions",
         "models": [{
-          "id": "moonshotai/kimi-k2.5",
-          "name": "Kimi K2.5",
-          "reasoning": true,
-          "contextWindow": 256000,
-          "maxTokens": 4096
+          "id": "moonshotai/kimi-k2.5"
         }]
       }
     }
@@ -79,202 +51,148 @@ http://127.0.0.1:18789/__openclaw__/canvas/
   "agents": {
     "defaults": {
       "model": {
-        "primary": "nvidia/moonshotai/kimi-k2.5"
+        "primary": "openai/moonshotai/kimi-k2.5"
       }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": ["5585975222"],
+      "groupPolicy": "allowlist",
+      "streamMode": "off"
     }
   }
 }
 ```
 
-**API 测试**：
-```bash
-curl -X POST "https://integrate.api.nvidia.com/v1/chat/completions" \
-  -H "Authorization: Bearer <API_KEY>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "moonshotai/kimi-k2.5",
-    "messages": [{"role": "user", "content": "Hello"}]
-  }'
-```
+### 本次修复项
 
-**响应**：HTTP 200 ✅
-```json
-{
-  "id": "chatcmpl-af9721cdcd4ccf45",
-  "model": "moonshotai/kimi-k2.5",
-  "choices": [...]
-}
-```
+- ✅ 删除无效配置项：`commands.include`（会导致 `config reload skipped (invalid config)`）
+- ✅ 将 `channels.telegram.streamMode` 从 `partial` 调整为 `off`（避免外部频道分片输出）
 
 ---
 
-### 4. Agent 功能测试
+## 健康检查明细
+
+### 1) Gateway 服务状态
 
 ```bash
-openclaw agent --agent main --message "Say API test OK" --thinking low
+openclaw gateway status
 ```
 
-**输出**：
-```
-API test OK only
+核心结果：
+
+- `Runtime: running (pid 44245, state active)`
+- `RPC probe: ok`
+- `Listening: 127.0.0.1:18789`
+- `Config (cli/service): ~/.openclaw/openclaw.json`
+
+### 2) Telegram 频道探活
+
+```bash
+openclaw channels status --probe --json
 ```
 
-✅ Agent 响应正常
+核心结果：
+
+- `configured: true`
+- `running: true`
+- `mode: polling`
+- `probe.ok: true`
+- `probe.bot.username: openclawclaw888bot`
+
+### 3) 综合状态
+
+```bash
+openclaw status --json
+```
+
+核心结果：
+
+- Gateway reachable：`true`
+- 默认模型：`moonshotai/kimi-k2.5`
+- 安全审计：`critical=0, warn=0, info=1`
+
+### 4) Doctor 诊断
+
+```bash
+openclaw doctor --non-interactive
+```
+
+当前仅剩 1 项非阻塞提示：
+
+- `Gateway service entrypoint does not match the current install`
+- 显示链路：`/opt/homebrew/lib/node_modules/openclaw/dist/index.js -> /Users/xiaomo/openclaw/dist/index.js`
+
+> 说明：该提示与全局 npm 链接（符号链接）相关，不影响当前运行。
 
 ---
 
-### 5. Doctor 诊断结果
+## 连通与功能测试结果
+
+### 1) NVIDIA API 可达性
 
 ```bash
-openclaw doctor
+curl -sS --max-time 30 https://integrate.api.nvidia.com/v1/models \
+  -H "Authorization: Bearer <NVIDIA_API_KEY>"
 ```
 
-| 检查项目 | 状态 | 详情 |
-|----------|------|------|
-| 状态完整性 | ⚠️ 警告 | 目录权限过于开放 |
-| OAuth 目录 | ⚠️ 缺失 | `~/.openclaw/credentials` 不存在 |
-| 会话记录 | ⚠️ 警告 | 1/1 会话缺少 transcript |
-| 安全配置 | ✅ 正常 | 无安全警告 |
-| Skills | ✅ 正常 | 8 个符合条件 |
-| 插件 | ✅ 正常 | 1 个已加载 |
+结果：`HTTP 200`，并能查到 `moonshotai/kimi-k2.5`。
+
+### 2) OpenClaw 模型调用实测
+
+```bash
+openclaw agent --agent main --session-id healthcheck-20260209-1 \
+  --message "请仅回复：MODEL_AGENT_OK" --thinking low --timeout 70 --json
+```
+
+结果（摘要）：
+
+- `status: ok`
+- `summary: completed`
+- 回复内容：`MODEL_AGENT_OK`
+- 模型：`moonshotai/kimi-k2.5`
+- 耗时：约 `20531ms`
+
+### 3) Telegram 出站消息测试
+
+```bash
+openclaw message send --channel telegram --target 5585975222 \
+  --message "OpenClaw 健康检查测试消息" --json
+```
+
+结果：
+
+- `payload.ok: true`
+- `chatId: 5585975222`
+- `messageId: 90`（后续复测 `91`）
 
 ---
 
-### 6. 日志状态
+## 与原生仓库一致性检查
 
-| 日志文件 | 大小 | 最后更新 | 状态 |
-|----------|------|----------|------|
-| `~/.openclaw/logs/gateway.log` | 7.5 KB | 2026-02-05 03:13 | ✅ 正常 |
-| `~/.openclaw/logs/gateway.err.log` | 8.8 KB | 2026-02-05 02:06 | ⚠️ 含历史错误 |
+仓库：`/Users/xiaomo/openclaw`
 
-**历史错误**（已解决）：
-- `models.providers.nvidia.api: Invalid input` - 配置更新过程中的临时验证错误
-- `Gateway auth is set to token, but no token is configured` - 初始配置问题，已修复
+- 当前分支：`main`
+- 本地 commit：`eab0a07f7173`
+- 上游最新：`origin/main @ 7f7d49aef...`
+- Ahead/Behind：`0 / 253`
+- 本地未提交改动：`15` 个文件
 
----
-
-### 7. 文件路径汇总
-
-| 类型 | 路径 |
-|------|------|
-| 主配置文件 | `~/.openclaw/openclaw.json` |
-| 日志目录 | `~/.openclaw/logs/` |
-| Gateway 日志 | `~/.openclaw/logs/gateway.log` |
-| 错误日志 | `~/.openclaw/logs/gateway.err.log` |
-| 工作区 | `~/.openclaw/workspace/` |
-| 会话数据 | `~/.openclaw/agents/main/sessions/` |
-| 项目源码 | `~/openclaw/` |
-| 构建输出 | `~/openclaw/dist/` |
+建议：如需完全贴近原生项目，请先备份本地改动再执行 rebase/merge。
 
 ---
 
-### 8. 已知问题
+## 后续建议
 
-#### 8.1 非阻塞警告
-
-**版本检测警告**（开发模式正常）：
-```
-Config was last written by a newer OpenClaw (2026.2.3); 
-current version is 0.0.0.
-```
-
-**说明**：从源码运行时期号未写入，不影响功能。
-
-**punycode 弃用警告**：
-```
-DeprecationWarning: The `punycode` module is deprecated.
-```
-
-**说明**：Node.js 内置模块弃用警告，等待上游依赖更新。
-
-#### 8.2 建议修复
-
-```bash
-# 1. 修复目录权限
-chmod 700 ~/.openclaw
-
-# 2. 创建 OAuth 目录
-mkdir -p ~/.openclaw/credentials
-
-# 3. 运行自动修复
-openclaw doctor --fix
-```
+1. **版本同步**：在确认本地 15 个改动用途后，再同步到 `origin/main`。
+2. **定期复检**：每周执行一次 `openclaw doctor --non-interactive` 与 `openclaw channels status --probe`。
+3. **配置变更后重启**：每次改动 `~/.openclaw/openclaw.json` 后执行 `openclaw gateway restart`。
+4. **安全审计**：补充执行 `openclaw security audit --deep` 并归档结果。
 
 ---
 
-## 健康检查命令
-
-### 快速检查
-
-```bash
-# 检查进程
-ps aux | grep openclaw
-
-# 检查端口
-lsof -i :18789
-
-# 检查状态
-openclaw status
-
-# 运行诊断
-openclaw doctor
-```
-
-### 完整检查
-
-```bash
-# 测试 API 连接
-curl -s -X POST "https://integrate.api.nvidia.com/v1/chat/completions" \
-  -H "Authorization: Bearer $NVIDIA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "moonshotai/kimi-k2.5",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "max_tokens": 10
-  }'
-
-# 测试 Agent
-openclaw agent --agent main --message "test" --thinking low
-
-# 查看实时日志
-openclaw logs --follow
-```
-
----
-
-## 维护建议
-
-### 日常维护
-
-```bash
-# 每日检查
-openclaw status
-
-# 每周检查
-openclaw doctor
-openclaw security audit
-
-# 查看日志
-tail -f ~/.openclaw/logs/gateway.log
-```
-
-### 故障排查
-
-```bash
-# Gateway 无响应
-openclaw gateway stop
-openclaw gateway start --verbose
-
-# 配置错误
-openclaw doctor --fix
-
-# 重置配置
-mv ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.bak
-openclaw onboard
-```
-
----
-
-*报告生成时间：2026-02-06 00:20*  
-*OpenClaw 版本：2026.2.3*  
-*检查工具：openclaw doctor, curl, ps, lsof*
+*报告生成时间：2026-02-09 01:50*  
+*检查工具：openclaw gateway/status/channels/doctor、openclaw agent、openclaw message、curl、git*
