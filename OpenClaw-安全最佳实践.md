@@ -267,7 +267,21 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 ---
 
-### 4.2 配置文件权限
+### 4.2 密钥定期轮换 (Key Rotation)
+
+**重要安全提示**：
+如果在调试过程中，API Key 或 Bot Token 曾以明文形式出现在：
+1. 终端输出
+2. 日志文件
+3. Agent 历史对话记录（`~/.openclaw/agents/*/sessions/`）
+
+**必须立即轮换（Revoke & Regenerate）该密钥**。
+
+轮换后，请仅在 `~/.openclaw/openclaw.json` 或环境变量中更新新密钥，并确保执行 `openclaw gateway restart` 使其生效。
+
+---
+
+### 4.3 配置文件权限
 
 ```bash
 # 设置正确的文件权限

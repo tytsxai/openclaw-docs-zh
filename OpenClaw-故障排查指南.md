@@ -109,6 +109,35 @@ openclaw gateway start
 
 ---
 
+### 1.4 截图/Vision 能力失败 (macOS)
+
+**症状**：
+```
+could not create image from display
+```
+或者 Agent 回复“无法获取屏幕截图”。
+
+**根因**：
+macOS 的权限管理机制（TCC）限制了后台进程（LaunchAgent/Daemon）获取屏幕内容的权限。即使授予了终端或 `node` 屏幕录制权限，以 Service 模式后台运行的 Gateway 也无法通过 `screencapture` 命令截图。
+
+**解决方案**：
+
+**方案 A（推荐）：前台运行 Gateway**
+如果需要使用截图、视觉分析功能，请停止后台服务，改在**已授权屏幕录制权限**的终端中前台运行 Gateway。
+
+```bash
+# 1. 停止后台服务
+openclaw gateway stop
+
+# 2. 在当前终端前台启动
+openclaw gateway run --bind loopback --port 18789 --force
+```
+
+**方案 B：仅使用文本模式**
+如果不需要截图功能，可继续使用后台服务，但需接受视觉能力不可用的限制。
+
+---
+
 ## 2. AI 模型相关问题
 
 ### 2.1 API Key 无效

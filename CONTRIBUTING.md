@@ -12,6 +12,7 @@
 - [🐛 报告问题](#报告问题)
 - [📝 改进文档](#改进文档)
 - [💡 分享经验](#分享经验)
+- [✅ 本地质量检查](#本地质量检查)
 - [📜 文档规范](#文档规范)
 - [🔄 提交流程](#提交流程)
 - [❓ 常见问题](#常见问题)
@@ -93,16 +94,22 @@ cd openclaw-docs
 # 3. 创建分支
 git checkout -b improve-documentation
 
-# 4. 修改文档
+# 4. 安装 Git Hook（推荐）
+bash scripts/install-git-hooks.sh
+
+# 5. 修改文档
 # 使用你喜欢的编辑器
 
-# 5. 提交更改
+# 6. 本地质量检查（必做）
+bash scripts/docs-check.sh --all
+
+# 7. 提交更改
 git commit -m "docs: 修正拼写错误"
 
-# 6. 推送到你的仓库
+# 8. 推送到你的仓库
 git push origin improve-documentation
 
-# 7. 创建 Pull Request
+# 9. 创建 Pull Request
 # 访问 GitHub 页面，点击 "New Pull Request"
 ```
 
@@ -119,6 +126,7 @@ Types:
 - feat: 新增内容
 - refactor: 重构结构
 - style: 格式调整
+- chore: 维护性改动（如脚本、CI）
 ```
 
 ### 好的提交示例
@@ -165,6 +173,35 @@ feat: 新增 Docker 部署章节
 - 在 README 中添加链接
 - 提交 PR 更新外部资源列表
 - 在 Discussions 中分享
+
+---
+
+## ✅ 本地质量检查
+
+提交前请先运行：
+
+```bash
+# 全量检查
+bash scripts/docs-check.sh --all
+
+# 仅检查当前改动（推荐日常使用）
+bash scripts/docs-check.sh --changed
+
+# 安装 pre-commit 自动检查
+bash scripts/install-git-hooks.sh
+```
+
+脚本会自动检查：
+
+- 每个 Markdown 文件必须且仅有一个 H1
+- 核心文档前 20 行包含 `YYYY-MM-DD` 日期
+- 本地 Markdown 链接可达（文件存在）
+
+CI 工作流会在 PR 中执行同一脚本：
+
+- `.github/workflows/docs-quality.yml`
+
+启用 Git Hook 后，`git commit` 将自动执行 `docs-check.sh --changed`。
 
 ---
 
@@ -225,7 +262,8 @@ npm install -g openclaw@latest
 # 文档标题
 
 > 简要描述
-> 适用版本/日期
+> 适用版本/环境
+> 最后更新：YYYY-MM-DD
 
 ---
 
@@ -237,10 +275,18 @@ npm install -g openclaw@latest
 ```markdown
 ---
 
-*文档版本：vx.x*
+*文档版本：vx.x（可选）*
 *最后更新：YYYY-MM-DD*
-*贡献者：@username*
+*贡献者：@username（可选）*
 ```
+
+### 结构同步
+
+新增或重命名文档后，请同步更新：
+
+- `README.md` 的文档索引
+- `OpenClaw-文档导航.md` 的文档地图
+- `CHANGELOG.md` 的版本记录
 
 ---
 

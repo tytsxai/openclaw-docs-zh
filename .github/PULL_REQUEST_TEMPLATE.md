@@ -21,6 +21,7 @@
 列出你修改的文档：
 
 - [ ] `README.md`
+- [ ] `OpenClaw-文档导航.md`
 - [ ] `OpenClaw-部署指南.md`
 - [ ] `OpenClaw-命令速查.md`
 - [ ] `OpenClaw-API配置指南.md`
@@ -34,6 +35,7 @@
 
 - [ ] 我已阅读贡献指南
 - [ ] 我的修改符合文档规范
+- [ ] 我已执行 `bash scripts/docs-check.sh --all`（或 `--changed`）且通过
 - [ ] 没有泄露任何敏感信息
 - [ ] 代码示例已验证可正常运行
 - [ ] 文档格式一致

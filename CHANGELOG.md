@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
+## [v1.4] - 2026-02-11
+
+### 新增
+
+- **Git Hook 自动化**（`.githooks/pre-commit`）
+  - `git commit` 时自动执行文档增量检查
+
+- **Git Hook 安装脚本**（`scripts/install-git-hooks.sh`）
+  - 一键设置 `core.hooksPath=.githooks`
+
+### 改进
+
+- `scripts/docs-check.sh` 新增 `--all` / `--changed` 参数
+- `README.md` 增加增量检查与 Hook 安装说明
+- `CONTRIBUTING.md` 增加 Hook 推荐流程与增量检查命令
+- `OpenClaw-文档导航.md` 补充自动化维护路径
+
+---
+
+## [v1.3] - 2026-02-11
+
+### 新增
+
+- **文档导航与维护入口** (`OpenClaw-文档导航.md`)
+  - 新增按场景阅读路径
+  - 新增文档地图与维护流程
+  - 新增质量门禁与更新标准
+
+- **文档质量检查脚本** (`scripts/docs-check.sh`)
+  - 校验 Markdown 文件 H1 规范
+  - 校验核心文档日期字段
+  - 校验本地 Markdown 链接可达性
+
+- **CI 自动检查工作流** (`.github/workflows/docs-quality.yml`)
+  - 对 `push` 与 `pull_request` 执行文档质检
+
+### 改进
+
+- `README.md` 新增文档导航入口与文档质检说明
+- `CONTRIBUTING.md` 新增质量检查流程和结构同步要求
+- `.github/DOCUMENTATION_TEMPLATE.md` 统一为 `最后更新` 字段
+- `.github/PULL_REQUEST_TEMPLATE.md` 增加文档质检勾选项
+
+---
+
 ## [v1.2] - 2026-02-06
 
 ### 新增
@@ -115,7 +160,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 | 版本 | 贡献者 |
 |------|--------|
-| v1.0 - v1.2 | OpenClaw Community |
+| v1.0 - v1.4 | OpenClaw Community |
 
 ---
 
@@ -154,4 +199,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
-*最后更新：2026-02-06*
+*最后更新：2026-02-11*

@@ -85,12 +85,14 @@ openclaw configure
 ### 3.3 启动 Gateway
 
 ```bash
-# 前台启动（调试用）
-openclaw gateway --port 18789 --verbose
+# 前台启动（调试用，或**需要截图/视觉功能时**）
+openclaw gateway run --verbose
 
-# 后台启动（使用守护进程）
+# 后台启动（使用守护进程，**仅限文本/无头模式**）
 openclaw gateway start
 ```
+
+> **注意**：macOS 系统下，如果需要使用 **截屏 (Screenshot)** 或 **视觉分析** 功能，必须使用 `openclaw gateway run` 在前台运行。后台服务（LaunchAgent）因系统权限限制无法获取屏幕内容。
 
 ### 3.4 配置消息频道（可选）
 

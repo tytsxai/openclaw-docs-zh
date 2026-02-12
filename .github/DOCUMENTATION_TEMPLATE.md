@@ -2,7 +2,7 @@
 
 > 文档说明：简要说明本文档的目的和内容
 > 适用版本：OpenClaw x.x.x+
-> 创建日期：YYYY-MM-DD
+> 最后更新：YYYY-MM-DD
 
 ---
 
@@ -61,13 +61,27 @@ example command or config
 
 ## 5. 参考
 
-- [相关文档链接](./related-document.md)
+- [相关文档链接](../README.md)
 - [官方文档](https://docs.openclaw.ai)
 - [GitHub Issue](https://github.com/openclaw/openclaw/issues)
 
 ---
 
-## 贡献者
+## 6. 质量检查（发布前）
+
+```bash
+# 全量检查
+bash scripts/docs-check.sh --all
+
+# 或仅检查本次改动
+bash scripts/docs-check.sh --changed
+```
+
+检查通过后再提交 PR。
+
+---
+
+## 贡献者（可选）
 
 感谢以下贡献者对本文档的改进：
 
@@ -76,6 +90,6 @@ example command or config
 
 ---
 
-*文档版本：v1.0*  
-*最后更新：YYYY-MM-DD*  
-*贡献者：[@yourname](https://github.com/yourname)*
+*文档版本：v1.0（可选）*
+*最后更新：YYYY-MM-DD*
+*贡献者：[@yourname](https://github.com/yourname)（可选）*

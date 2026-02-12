@@ -252,6 +252,17 @@ rm ~/.openclaw/logs/gateway.log.*  # 清理旧日志
 
 ---
 
+## 修复/锁定命令集 (推荐)
+
+防止 Telegram 命令列表被插件污染，锁定为核心命令：
+
+```bash
+openclaw config set --json commands.include '["help","commands","status","context","whoami","stop","reset","new","think","verbose","model"]'
+openclaw config set commands.native true
+openclaw config set commands.nativeSkills false
+openclaw gateway restart
+```
+
 ## 快捷别名（添加到 ~/.zshrc 或 ~/.bashrc）
 
 ```bash

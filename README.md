@@ -1,6 +1,6 @@
 # OpenClaw 本地部署与长期维护说明
 
-更新时间：2026-02-09 02:59（CST）
+更新时间：2026-02-11 11:42（CST）
 
 ## 1) 当前状态（已完成）
 
@@ -105,6 +105,7 @@ bash ./sync-upstream.sh --skip-install --skip-verify
 
 ## 7) 文档索引（本目录）
 
+- 文档导航（新增）：`OpenClaw-文档导航.md`
 - 部署与运维：`OpenClaw-部署指南.md`
 - 健康体检：`OpenClaw-健康状态报告.md`
 - API 配置：`OpenClaw-API配置指南.md`
@@ -112,7 +113,32 @@ bash ./sync-upstream.sh --skip-install --skip-verify
 - 安全建议：`OpenClaw-安全最佳实践.md`
 - 完整修复方案：`OpenClaw-完整修复方案-2026-02-09.md`
 
-## 8) 注意事项
+## 8) 文档质量检查（新增）
+
+本仓库已内置文档质检脚本与 CI 工作流。
+
+```bash
+# 全量检查（默认）
+bash scripts/docs-check.sh --all
+
+# 仅检查本次改动（提交前推荐）
+bash scripts/docs-check.sh --changed
+
+# 一键安装 pre-commit 钩子（推荐）
+bash scripts/install-git-hooks.sh
+```
+
+检查项包括：
+
+- 每个 Markdown 文件必须且仅有一个一级标题（H1）
+- 核心文档前 20 行必须包含 `YYYY-MM-DD` 日期
+- 本地 Markdown 链接必须可访问（文件存在）
+
+CI 工作流文件：`.github/workflows/docs-quality.yml`
+
+Git Hook 文件：`.githooks/pre-commit`
+
+## 9) 注意事项
 
 - 不要在文档、仓库、日志中写入真实密钥。
 - 你当前维护主仓为 `openclaw-personal`，后续只在该仓持续迭代。
